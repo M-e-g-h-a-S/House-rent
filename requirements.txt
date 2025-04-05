@@ -1,7 +1,5 @@
-Flask==3.0.0
-Flask-WTF==1.2.1
-Flask-SQLAlchemy==3.1.1
-Flask-RESTful==0.3.9
-joblib
-pandas
-gunicorn
+Flask 
+gunicorn 
+pandas 
+scikit-learn 
+joblib 
