@@ -1,77 +1,64 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 import joblib
 import pandas as pd
-from sklearn.preprocessing import StandardScaler
 
 app = Flask(__name__)
 
-# Load the trained model and columns
+# Load the trained model and supporting files
 model = joblib.load('house_rent_model.pkl')
 model_columns = joblib.load('model_columns.pkl')
 scaler = joblib.load('scaler.pkl')
 
-def preprocess_input(df):
-    # Scale 'Size'
-    df['Size'] = scaler.transform(df[['Size']])
+# Mapping
+city_map = {
+    "Bangalore": [0, 0, 0, 0, 0],  # will be dropped
+    "Chennai":   [1, 0, 0, 0, 0],
+    "Delhi":     [0, 1, 0, 0, 0],
+    "Hyderabad": [0, 0, 1, 0, 0],
+    "Kolkata":   [0, 0, 0, 1, 0],
+    "Mumbai":    [0, 0, 0, 0, 1]
+}
 
-    # Manually encode city columns including 'Bangalore'
-    city_map = {
-        "Bangalore": [1, 0, 0, 0, 0, 0],
-        "Chennai":   [0, 1, 0, 0, 0, 0],
-        "Delhi":     [0, 0, 1, 0, 0, 0],
-        "Hyderabad": [0, 0, 0, 1, 0, 0],
-        "Kolkata":   [0, 0, 0, 0, 1, 0],
-        "Mumbai":    [0, 0, 0, 0, 0, 1]
-    }
-
-    city_cols = ['City_1', 'City_2', 'City_3', 'City_4', 'City_5', 'City_6']
-    city_values = city_map.get(df.at[0, 'City'], [0, 0, 0, 0, 0, 0])
-
-    for col, val in zip(city_cols, city_values):
-        df[col] = val
-
-    df.drop('City', axis=1, inplace=True)
-
-    # Ensure correct column order
-    df = df.reindex(columns=model_columns, fill_value=0)
-    return df
+furnishing_map = {
+    "Unfurnished": 0,
+    "Semi-Furnished": 1,
+    "Furnished": 2
+}
 
 @app.route('/')
 def home():
-    return '''
-        <h2>House Rent Predictor</h2>
-        <form action="/predict" method="post">
-            Size (in sq ft): <input type="number" name="Size"><br>
-            City: 
-            <select name="City">
-                <option value="Bangalore">Bangalore</option>
-                <option value="Chennai">Chennai</option>
-                <option value="Delhi">Delhi</option>
-                <option value="Hyderabad">Hyderabad</option>
-                <option value="Kolkata">Kolkata</option>
-                <option value="Mumbai">Mumbai</option>
-            </select><br><br>
-            <input type="submit" value="Predict">
-        </form>
-    '''
+    return render_template('index.html')
+
+def preprocess_input(df):
+    # Scale Size
+    df['Size'] = scaler.transform(df[['Size']])
+
+    # Encode City
+    city_vals = city_map.get(df.at[0, 'City'], [0, 0, 0, 0, 0])
+    for i in range(1, 6):
+        df[f'City_{i}'] = city_vals[i - 1]
+    df.drop('City', axis=1, inplace=True)
+
+    # Reorder columns
+    df = df.reindex(columns=model_columns, fill_value=0)
+    return df
 
 @app.route('/predict', methods=['POST'])
 def predict():
     try:
-        if request.is_json:
-            data = request.get_json()
-        else:
-            data = {
-                'Size': float(request.form['Size']),
-                'City': request.form['City']
-            }
-        df = pd.DataFrame([data])
-        processed_df = preprocess_input(df)
-        prediction = model.predict(processed_df)
-        return jsonify({'predicted_rent': float(prediction[0])})
-    except Exception as e:
-        return jsonify({'error': str(e)})
+        data = {
+    'BHK': int(request.form['bhk']),
+    'Size': float(request.form['size']),
+    'Furnishing Status': furnishing_map[request.form['furnishing']],
+    'City': request.form['city']
+}
 
+        df = pd.DataFrame([data])
+        processed = preprocess_input(df)
+        prediction = model.predict(processed)
+        return render_template('index.html', prediction_text=f'Predicted Rent: ₹{round(prediction[0], 2)}')
+    except Exception as e:
+        return render_template('index.html', prediction_text=f'Error: {str(e)}')
 
 if __name__ == '__main__':
     app.run(debug=True)

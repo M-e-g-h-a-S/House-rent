@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>House Rent Predictor</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">House Rent Predictor</h1>
+
+        <form action="/predict" method="post" class="form">
+            <label for="size">Size (sq ft):</label>
+            <input type="number" id="size" name="size" required>
+            <p id="size-range" class="text-sm text-gray-600 mt-1"></p>
+
+            <label for="bhk">BHK:</label>
+            <select id="bhk" name="bhk" disabled required></select>
+
+            <label for="city">City:</label>
+            <select id="city" name="city" required>
+                <option value="">Select City</option>
+                <option value="Bangalore">Bangalore</option>
+                <option value="Chennai">Chennai</option>
+                <option value="Delhi">Delhi</option>
+                <option value="Hyderabad">Hyderabad</option>
+                <option value="Kolkata">Kolkata</option>
+                <option value="Mumbai">Mumbai</option>
+            </select>
+
+            <label for="furnishing">Furnishing Status:</label>
+            <select id="furnishing" name="furnishing" disabled required>
+                <option>Select BHK and City</option>
+            </select>
+
+            <button type="submit">Predict</button>
+        </form>
+
+        {% if prediction_text %}
+            <div class="result">{{ prediction_text }}</div>
+        {% endif %}
+    </div>
+
+    <script>
+        const furnishingOptions = {
+            "Bangalore": {1:["Unfurnished","Semi-Furnished","Furnished"],2:["Semi-Furnished","Furnished","Unfurnished"],3:["Furnished","Semi-Furnished","Unfurnished"],4:["Semi-Furnished","Furnished","Unfurnished"]},
+            "Chennai": {1:["Semi-Furnished","Unfurnished","Furnished"],2:["Semi-Furnished","Unfurnished","Furnished"],3:["Semi-Furnished","Furnished","Unfurnished"],4:["Semi-Furnished","Unfurnished","Furnished"],5:["Semi-Furnished"],6:["Semi-Furnished","Furnished"]},
+            "Delhi": {1:["Furnished","Unfurnished","Semi-Furnished"],2:["Semi-Furnished","Unfurnished","Furnished"],3:["Semi-Furnished","Unfurnished","Furnished"],4:["Unfurnished","Semi-Furnished","Furnished"],5:["Unfurnished"]},
+            "Hyderabad": {1:["Unfurnished","Semi-Furnished","Furnished"],2:["Unfurnished","Semi-Furnished","Furnished"],3:["Semi-Furnished","Furnished","Unfurnished"],4:["Semi-Furnished","Furnished","Unfurnished"],5:["Unfurnished"],6:["Furnished","Unfurnished","Semi-Furnished"]},
+            "Kolkata": {1:["Unfurnished","Furnished","Semi-Furnished"],2:["Unfurnished","Semi-Furnished","Furnished"],3:["Semi-Furnished","Unfurnished","Furnished"],4:["Unfurnished","Furnished","Semi-Furnished"],5:["Unfurnished"],6:["Semi-Furnished"]},
+            "Mumbai": {1:["Semi-Furnished","Furnished","Unfurnished"],2:["Furnished","Unfurnished","Semi-Furnished"],3:["Unfurnished","Semi-Furnished","Furnished"],4:["Semi-Furnished","Unfurnished","Furnished"],5:["Furnished","Semi-Furnished","Unfurnished"]}
+        };
+
+        const validSizeRanges = {
+            "Delhi": {1:[300,1400],2:[500,1800],3:[700,2000],4:[900,2200],5:[1200,2400]},
+            "Mumbai": {1:[350, 1500], 2:[550, 1700], 3:[800, 2000], 4:[1000, 2300], 5:[1300, 2500]},
+            "Bangalore": {1:[320, 1450], 2:[520, 1650], 3:[750, 1900], 4:[950, 2200]},
+            "Chennai": {1:[310, 1400], 2:[510, 1600], 3:[720, 1850], 4:[930, 2150], 5:[1200, 2300], 6:[1350, 2450]},
+            "Hyderabad": {1:[330, 1480], 2:[530, 1680], 3:[770, 1950], 4:[970, 2250], 5:[1250, 2400], 6:[1400, 2600]},
+            "Kolkata": {1:[300, 1300], 2:[500, 1500], 3:[700, 1700], 4:[900, 1900], 5:[1100, 2100], 6:[1250, 2200]}
+        };
+
+        const citySelect = document.getElementById('city');
+        const bhkSelect = document.getElementById('bhk');
+        const furnishingSelect = document.getElementById('furnishing');
+        const sizeRangeDisplay = document.getElementById("size-range");
+
+        citySelect.addEventListener('change', () => {
+            const city = citySelect.value;
+
+            bhkSelect.innerHTML = '<option value="">Select BHK</option>';
+            furnishingSelect.innerHTML = '<option>Select BHK and City</option>';
+            furnishingSelect.disabled = true;
+
+            if (city && furnishingOptions[city]) {
+                bhkSelect.disabled = false;
+                Object.keys(furnishingOptions[city]).forEach(bhk => {
+                    const option = document.createElement('option');
+                    option.value = bhk;
+                    option.textContent = bhk;
+                    bhkSelect.appendChild(option);
+                });
+            } else {
+                bhkSelect.disabled = true;
+            }
+
+            sizeRangeDisplay.textContent = '';
+        });
+
+        bhkSelect.addEventListener('change', () => {
+            const city = citySelect.value;
+            const bhk = bhkSelect.value;
+
+            furnishingSelect.innerHTML = '';
+
+            if (city && bhk && furnishingOptions[city]?.[bhk]) {
+                furnishingSelect.disabled = false;
+                furnishingOptions[city][bhk].forEach(optionText => {
+                    const option = document.createElement('option');
+                    option.value = optionText;
+                    option.textContent = optionText;
+                    furnishingSelect.appendChild(option);
+                });
+            } else {
+                furnishingSelect.disabled = true;
+            }
+
+            const range = validSizeRanges[city]?.[bhk];
+            if (range) {
+                sizeRangeDisplay.textContent = `Valid size range: ${range[0]} – ${range[1]} sq ft`;
+            } else {
+                sizeRangeDisplay.textContent = '';
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: house-rent-predictor
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python app.py
